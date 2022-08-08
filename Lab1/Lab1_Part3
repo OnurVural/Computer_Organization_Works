@@ -1,0 +1,118 @@
+# Program to find minimum, maximum, average values inside a given array
+.text
+# Begin by loading values into registers
+	add     $t0, $zero, $zero # will be used for iteration (i)
+	la	$t1, array
+	lw	$t2, arrsize
+	
+	# helpers
+	add	$t3, $zero, $zero # holding avg
+	lw	$t4, 0($t1) # For max: $t4 = array[0]
+	lw	$t5, 0($t1) # For min: $t4 = array[0]	
+	add	$t6, $zero, $zero # used as a temp register
+	
+	
+# Print the title
+	li	$v0, 4
+	la	$a0, title
+	syscall	
+	
+# Processing array
+while:
+	beq	$t0, $t2, exit
+	
+	lw 	$t6, 0($t1)
+	bgt	$t6, $t4, newMax
+	cont:
+	blt	$t6, $t5, newMin	
+	cont2:
+	# print mem-addr
+	li $v0, 34
+	add $a0, $zero, $t1
+	syscall
+	
+	# print space
+	li	$v0, 4
+	la	$a0, space
+	syscall
+	
+	# print item
+	li $v0, 1
+	lw $a0, 0($t1)
+	syscall
+	
+	# print newline 
+	li	$v0, 4
+	la	$a0, newLine
+	syscall
+	
+	add	$t3, $t3, $t6
+
+	addi	$t0, $t0, 1 # i++
+	addi	$t1, $t1, 4 # passing next index
+j while 
+
+newMax:
+	move $t4, $t6
+j cont
+
+newMin:
+	move $t5, $t6
+j cont2
+
+
+exit:
+	div	$t3, $t2
+	mflo	$t3
+# print avg 
+	li	$v0, 4
+	la	$a0, avgPrompt
+	syscall
+	
+	li	$v0, 1
+	move	$a0, $t3
+	syscall 
+
+	li	$v0, 4
+	la	$a0, newLine
+	syscall
+	
+# print max
+	li	$v0, 4
+	la	$a0, maxPrompt
+	syscall
+	
+	li	$v0, 1
+	move	$a0, $t4
+	syscall 
+
+	li	$v0, 4
+	la	$a0, newLine
+	syscall
+
+# print min
+	li	$v0, 4
+	la	$a0, minPrompt
+	syscall
+	
+	li	$v0, 1
+	move	$a0, $t5
+	syscall 
+
+	li	$v0, 4
+	la	$a0, newLine
+	syscall
+
+# End program
+	li	$v0, 10
+	syscall
+
+.data
+array:		.word 3, 1, 5, 2, 4
+arrsize:	.word 5
+title:		.asciiz "Memory Address   Array Element\nPosition (hex)   Value(int)\n==============   ==============\n"
+avgPrompt:	.asciiz "Average: "	
+maxPrompt:	.asciiz "Maximum: "
+minPrompt:	.asciiz "Minimum: "
+newLine:	.asciiz "\n"
+space:		.asciiz "        "

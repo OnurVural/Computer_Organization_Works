@@ -1,0 +1,356 @@
+# Processing a dynamic array constructed by the user 
+.text
+menu:
+	# print msg
+	li $v0, 4
+	la $a0, WelcomePrompt
+	syscall
+	
+	# get option num
+	li	$v0, 5
+	syscall
+	move	$t4, $v0 # to get option 
+	
+	li	$t5, 1
+	li	$t6, 2
+	li	$t7, 3
+	beq     $t4, $zero, fin
+	beq     $t4, $t5, menuCreateArr
+	#a1:
+	beq     $t4, $t6, menuCheckSymmetric
+	#a2:
+	beq     $t4, $t7, menuFindMinMax
+	#a3:
+	j menu
+	
+menuCreateArr:	
+	# try sub1 -----------------------------------------------------------------------
+	jal	getArray # init. and print the dynamic array
+	move	$a0, $v0 # get the return value of index
+	move	$a1, $v1 # get the return value of size
+	move	$t0, $v0 # to hold start index for later use
+	move	$t1, $v1 # to hold size for later use
+	j menu	
+
+menuCheckSymmetric:
+	# try sub2 -----------------------------------------------------------------------
+	move	$a0, $t0 # gets starting ad. of array
+	move	$a1, $t1 # gets arraySize
+	jal	CheckSymmetric	
+	beq	$v0, $zero, notSym # check the return value
+	
+	# print message
+	li	$v0, 4
+	la	$a0, SymmetricMsg
+	syscall
+	j menu
+notSym:
+	# print message
+	li	$v0, 4
+	la	$a0, AsymmetricMsg
+	syscall
+proceed:
+	# print emptyLine
+	li $v0, 4
+	la $a0, empty
+	syscall
+	j menu
+	
+	# try sub3 -----------------------------------------------------------------------
+menuFindMinMax:
+	# prepare the argument values
+	move	$a0, $t0
+	move	$a1, $t1
+	jal	FindMinMax
+	li	$t2, -72 # the sentinel value
+	beq	$v1, $t2, menu	
+	move	$t3, $v0 # extract the return value
+	move	$t4, $v1 # extract the return value
+	
+	# print minimum
+	li	$v0, 1
+	move	$a0, $t3
+	syscall
+	# Print minPrompt
+	li	$v0, 4
+	la	$a0, minPrompt
+	syscall
+	
+	# print maximum
+	li	$v0, 1
+	move	$a0, $t4
+	syscall
+	# Print maxPrompt
+	li	$v0, 4
+	la	$a0, maxPrompt
+	syscall
+	j menu
+	
+fin:
+	# end program
+	li	$v0, 10
+		syscall		
+#-------------------------------------------------------------------------------
+# getArray: Constructs a dynamic array and fills it with user inputs 
+# @return $v0: array beginning address 
+# @return $v1: size of array
+getArray:
+	# Allocate memory in stack for registers
+	addi	$sp, $sp, -24 
+	sw	$s0, 20($sp) # to return size
+	sw	$s1, 16($sp) # to return array
+	sw	$s2, 12($sp) # i for iteration
+	sw	$s3, 8($sp) # for temporary processes
+	sw	$s4, 4($sp) # to hold current item
+	sw	$ra, 0($sp) # VERY IMPORTANT TO BE ABLE TO RETURN
+	
+	add	$s2, $zero, $zero # i = 0 
+	
+	# print the message
+	li	$v0, 4
+	la	$a0, EnterSizeMsg
+	syscall 
+	
+	# get the value for arraySize from user
+	li	$v0, 5
+	syscall
+	move	$s0, $v0 # to store size 
+	
+	li	$s3, 4
+	mult	$s3, $s0
+	mflo	$s3 # now we have the correct size
+	
+	# Construct dynamic array
+	move 	$a0, $s3  
+	li 	$v0, 9 	# dynamic storage
+	syscall 	
+	
+	move	$s1, $v0 # to store the beginning index
+	move	$s3, $s1 # s3 also points to beginning
+	
+getInput:
+	beq	$s2, $s0, startPrint
+	
+	# print message
+	li	$v0, 4
+	la	$a0, EnterDataMsg
+	syscall
+	# get the value for array items from user
+	li	$v0, 5
+	syscall
+	move	$s4, $v0 # put item to $s4
+	
+	sw	$s4, 0($s3) # put it into array: arr[i] = $s3
+	
+	addi	$s3, $s3, 4 # pass next address	
+	addi	$s2, $s2, 1 # i++
+	j	getInput
+
+
+startPrint:
+	move	$a0, $s1
+	move	$a1, $s0
+	jal	PrintArray
+	
+	move	$v0, $s1
+	move	$v1, $s0
+	# Deallocate memory 
+	lw	$ra, 0($sp) # take old value for instruction
+	lw	$s4, 4($sp) 
+	lw	$s3, 8($sp) 
+	lw	$s2, 12($sp) 
+	lw	$s1, 16($sp) 
+	lw	$s0, 20($sp) 
+	addi	$sp, $sp, 24 # avoid memory leaks
+	
+	jr	$ra
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# PrintArray: Prints the dynamic array 
+# @param $a0: array beginning address
+# @param $a1: array size
+PrintArray:
+	# Allocate memory in stack for registers
+	addi	$sp, $sp, -12 # we use 3 $s 
+	sw	$s0, 8($sp)
+	sw	$s1, 4($sp)
+	sw	$s2, 0($sp)
+	# ---------------------------------------
+	move	$s0, $a0 # gets starting ad. of array
+	move	$s1, $a1 # gets arraySize
+	add	$s2, $zero, $zero # i = 0
+	j	check
+
+cont:
+	# display i'th element
+	li $v0, 1
+	lw $a0, 0($s0)
+	syscall
+	
+	# print ,
+	li $v0, 4
+	la $a0, arraySpace
+	syscall
+	
+	addi	$s2, $s2, 1 # i = i + 1
+	addi	$s0, $s0, 4 # point to next element (address+4)
+check:
+	bne	$s2, $s1, cont # i != arraySize
+	
+	# Deallocate/ free memory in stack 
+	lw	$s2, 0($sp)
+	lw	$s1, 4($sp)
+	lw	$s0, 8($sp)
+	addi	$sp, $sp, 12
+
+	jr	$ra
+#-------------------------------------------------------------------------------
+# CheckSymmetric: checks whether an array is symmetric or not
+# @param $a0: array beginning address
+# @param $a1: array size
+# @return $v0: 1 if symmetric, 0 if otherwise
+CheckSymmetric:
+	# Allocate memory in stack for registers
+	addi	$sp, $sp, -32 # we use 8 $s + a
+	sw	$s0, 28($sp) # to hold starting address of array
+	sw	$s1, 24($sp) # to hold arraySize
+	sw	$s2, 20($sp) # used as iterator (i)
+	sw	$s3, 16($sp) # to hold midpoint as we require 
+	sw	$s4, 12($sp) # pointing end index of array
+	sw	$s5, 8($sp)  # for multiplication purpose
+	sw	$s6, 4($sp)  # current value of first pointer
+	sw	$s7, 0($sp)  # current value of last pointer
+	
+	move	$s0, $a0 # gets starting ad. of array
+	move	$s1, $a1 # gets arraySize
+	add	$s2, $zero, $zero # i = 0
+	
+	# find midpoint
+	addi	$s3, $zero, 2  
+	div	$s1, $s3 # divide by zero to get midpoint
+	mflo	$s3 # midpoint stored in $s3
+	# -----------
+	
+	# we need for another pointer pointing last item, in order to do that
+	li      $s5, 4
+	mult  	$s1, $s5 # multiply arraysize and 4 to get index
+	mflo    $s5
+	subi	$s5, $s5, 4 # this is because index starts from zero
+	# ----------------
+	#la $t5, last-1(array) # pointing to last element
+	move 	$s4, $s0
+	add 	$s4, $s4, $s5	
+		
+compare:
+	beq	$s2, $s3, symmetric #the comparison will proceed until we reach midpoint of array
+	#load the values for comparison
+	lw 	$s6, 0($s0) 
+	lw 	$s7, 0($s4)
+	#----------------------------
+	bne 	$s6, $s7, asymmetric # if spot the items in symmetric positions are not equal, we exit immediately
+	
+	addi 	$s0, $s0, 4 #increase first index for next comparison
+	subi 	$s4, $s4, 4 #decrease second index for next comparison
+	addi 	$s2, $s2, 1 #i++ (THIS INDICATES NO OF KEY COMPARISONS IN ARRAY-which is up to midpoint)		
+	j 	compare
+
+symmetric:
+	addi	$v0, $zero, 1
+	j 	exit
+	
+asymmetric:
+ 	add	$v0, $zero, $zero
+	j 	exit	
+exit:	
+	# Deallocate/ free memory in stack
+	lw	$s7, 0($sp)
+	lw	$s6, 4($sp)
+	lw	$s5, 8($sp)
+	lw	$s4, 12($sp)
+	lw	$s3, 16($sp)
+	lw	$s2, 20($sp)
+	lw	$s1, 24($sp)
+	lw	$s0, 28($sp)
+	addi	$sp, $sp, 32
+	jr	$ra
+#-------------------------------------------------------------------------------
+# FindMinMax: returns the minimum and maximum values in an array
+# @param $a0: array beginning address
+# @param $a1: array size
+# @return $v0: the minimum value of array (return -72-"sentinel value" for empty array)
+# @return $v1: the maximum value of array (return -72-"sentinel value" for empty array)
+FindMinMax:
+	# Allocate memory in stack for registers
+	addi	$sp, $sp, -24
+	sw	$s0, 20($sp)
+	sw	$s1, 16($sp)
+	sw	$s2, 12($sp)
+	sw	$s3, 8($sp)
+	sw	$s4, 4($sp)
+	sw	$s5, 0($sp)
+	
+	move	$s0, $a0 # gets starting ad. of array
+	move	$s1, $a1 # gets arraySize
+	beq	$s1, $zero, emptyArray # THE EXEPTION CASE CHECK
+	add	$s2, $zero, $zero # i = 0
+	lw	$s3, 0($s0) # For min: $s3 = array[0]
+	lw	$s4, 0($s0) # For max: $s4 = array[0]	
+	add	$s5, $zero, $zero # temp register
+
+while:
+	beq	$s2, $s1, complete
+	lw 	$s5, 0($s0)
+	blt	$s5, $s3, newMin
+	c1:
+	bgt	$s5, $s4, newMax	
+	c2:
+	addi	$s2, $s2, 1 # i++
+	addi	$s0, $s0, 4 # passing next index
+	j while 
+
+newMin:
+	move $s3, $s5
+	j c1
+
+newMax:
+	move $s4, $s5
+	j c2
+
+
+complete:
+	move	$v0, $s3 # put return value the min
+	move	$v1, $s4 # put return value the max
+
+deAlloc:	
+	# Deallocate/ free memory in stack
+	sw	$s5, 0($sp)
+	sw	$s4, 4($sp)
+	sw	$s3, 8($sp)
+	sw	$s2, 12($sp)
+	sw	$s1, 16($sp)
+	sw	$s0, 20($sp)
+	addi	$sp, $sp, 24
+	
+	jr	$ra
+
+emptyArray:
+	# print msg
+	li $v0, 4
+	la $a0, emptyArrayMsj
+	syscall
+	
+	li	$v0, -72
+	li	$v1, -72	
+	j deAlloc
+#-------------------------------------------------------------------------------
+.data
+WelcomePrompt:  .asciiz "\nHello, welcome\nEnter 0) to exit 1) to create array 2) check symmetry 3) find min max \n:" 
+EnterSizeMsg:	.asciiz "\nWelcome! Please enter the size of the array:" 
+EnterDataMsg:	.asciiz "Please enter an integer: "
+SymmetricMsg:	.asciiz "\nThe array is symmetric..."
+AsymmetricMsg:  .asciiz "\nThe array is not symmetric..."
+arraySpace:	.asciiz ", "
+emptyArrayMsj:	.asciiz "\nThe array is empty no min/max..."
+maxPrompt:	.asciiz " <-is maximum "
+minPrompt:	.asciiz " <-is minimum "
+empty:		.asciiz "\n"

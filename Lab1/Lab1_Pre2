@@ -1,0 +1,69 @@
+# Program to evaluate the arithmatic expression: x = a * (b - c) % d
+.text
+
+# input interface print
+	li	$v0, 4
+	la	$a0, WelcomeMsj
+	syscall
+#------------------------------		
+# print prompt for a
+	li	$v0, 4
+	la	$a0, aPrompt
+	syscall
+# read a
+	li	$v0, 5
+	syscall
+	move	$t0, $v0	  
+#------------------------------
+# print prompt for b
+	li	$v0, 4
+	la	$a0, bPrompt
+	syscall
+# read b
+	li	$v0, 5
+	syscall
+	move	$t1, $v0
+#------------------------------
+# print prompt for c
+	li	$v0, 4
+	la	$a0, cPrompt
+	syscall
+# read c
+	li	$v0, 5
+	syscall
+	move	$t2, $v0
+#------------------------------
+# print prompt for d
+	li	$v0, 4
+	la	$a0, dPrompt
+	syscall
+# read d
+	li	$v0, 5
+	syscall
+	move	$t3, $v0	
+# processing data-----------
+	sub	$t4, $t1, $t2
+	mult    $t0, $t4
+	mflo    $t4
+	div	$t4, $t3
+	mfhi	$t4
+#---------------------------
+# print result prompt
+	li	$v0, 4
+	la	$a0, resultPrompt
+	syscall  
+# print the result 
+	li	$v0, 1
+	move    $a0, $t4
+	syscall
+# end program
+	li	$v0, 10
+	syscall 
+
+.data
+WelcomeMsj:	.asciiz " Welcome to arithmatic expression calculator!\n->In order to evaluate x = a * (b - c) % d please enter inputs...\n"
+aPrompt:	.asciiz "Please enter a: "
+bPrompt:	.asciiz "Please enter b: "
+cPrompt:	.asciiz "Please enter c: "
+dPrompt:	.asciiz "Please enter d: "
+resultPrompt:	.asciiz "The result of the expression is: "
