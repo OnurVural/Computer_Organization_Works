@@ -1,0 +1,363 @@
+CS224 
+Section No.:  3
+Spring 2021 
+Lab No.:  6
+Your Full Name/Bilkent ID: Nurettin Onur Vural / 21902330
+
+//CODE_START---------------------------------------------------------------------------------------------------------------------------------------------------
+# Program that dynamically allocates an array and finds the average of elements
+.text
+main:
+menu:
+	# print msg
+	li 	$v0, 4
+	la 	$a0, WelcomePrompt
+	syscall
+	# print msg
+	li 	$v0, 4
+	la 	$a0, EnterPrompt
+	syscall
+	# get user selection
+	li	$v0, 5
+	syscall
+	
+	# move the option num
+	move 	$t0, $v0
+	# go to proper option...
+	beq 	$t0, $zero, fin
+	beq 	$t0, 1, sel1
+	beq 	$t0, 2, sel2
+	beq 	$t0, 3, sel3
+	beq 	$t0, 4, sel4
+	beq 	$t0, 5, sel5
+j menu
+
+# Gets size input from user----START	
+sel1:
+	# print msg
+	li $v0, 4
+	la $a0, sel1Prompt
+	syscall
+	
+	# get size from user
+	li	$v0, 5
+	syscall
+	# set size
+	move	$s6, $v0
+	sw      $s6, size	
+j menu
+# Gets size input from user----END	
+
+# Creates dynamic array----START
+sel2:
+	lw	$t1, size
+	beq     $t1, -1, unsuc
+	
+	mul 	$t3, $t1, $t1 # N*N copy
+	mul 	$t1, $t1, $t1 # N*N
+	mul 	$t1, $t1, 4 # need to allocate in terms of bytes
+	
+	# Construct dynamic array
+	move 	$a0, $t1 
+	li 	$v0, 9 	# dynamic storage
+	syscall
+	
+	move    $t2, $v0 # index
+	sw 	$v0, arrayStart 
+
+	addi	$t1, $zero, 1 # start from 1
+	add     $t4, $zero, $zero
+	
+	
+	while:
+	beq	$t4, $t3, done # while i < size
+	sw	$t1, 0($t2) # arr[i][j] = $t1
+	addi    $t2, $t2, 4 # i++
+	addi    $t1, $t1, 1 # $t1 = $t1 + 1
+	addi    $t4, $t4, 1 # i++	
+	j while
+	
+	done:
+	
+	# print msg
+	la $a0, sel2Success
+	li $v0, 4
+	syscall
+
+	j complete
+unsuc: 
+
+	# print msg
+	la $a0, sel2Problem
+	li $v0, 4
+	syscall
+
+complete:
+j menu
+# Creates dynamic array----END
+
+
+
+# Displays desired elements of the matrix by specifying its row and column member---START
+sel3:
+	# first, check if there is an array created!
+	lw	$t0, size
+	lw	$t1, arrayStart
+	beq     $t1, -1, noArray
+
+	# prints general message
+	li $v0, 4
+	la $a0, displayPropmpt1
+	syscall
+	
+	
+	# prints row message
+	li $v0, 4
+	la $a0, rowPrompt
+	syscall
+	
+	li	$v0, 5
+	syscall
+	
+	move	$t2, $v0
+	
+	# prints column message
+	li $v0, 4
+	la $a0, columnPrompt
+	syscall
+	
+	li	$v0, 5
+	syscall
+	
+	move	$t3, $v0
+	
+	# check whether the indexes are valid
+	bgt	$t2, $t0, notValid1
+	bgt	$t3, $t0, notValid1
+	ble	$t2, $zero, notValid1
+	ble	$t3, $zero, notValid1	
+	# if they are valid find the proper index
+	# displacement for (i,j) = (i - 1) x N x 4 + (j - 1) x 4
+	addi	$t2, $t2, -1 # i - 1
+	mul     $t4, $t2, $t0  # (i - 1) x N
+	mul     $t4, $t4, 4 # (i - 1) x N x 4
+	addi	$t3, $t3, -1 # j - 1
+	mul	$t3, $t3, 4 # (j - 1) x 4
+	add	$t4, $t4, $t3 # displacement adress is calculated
+	
+	add	$t1, $t1, $t4
+	
+	# print msg
+	li $v0, 4
+	la $a0, desiredValue
+	syscall
+	
+	li $v0, 1
+	lw $a0, 0($t1)
+	syscall
+	j done3
+	 
+noArray:
+	# print msg
+	la $a0, arrayNotCreated
+	li $v0, 4
+	syscall
+	j done3
+notValid1:
+	la $a0, invalidIndex
+	li $v0, 4
+	syscall
+	j done3
+	
+done3:
+j menu
+# Displays desired elements of the matrix by specifying its row and column member---END
+
+
+
+# Obtain the average of the matrix elements in a row-major fashion---START
+sel4:
+	# first, check if there is an array created!
+	lw	$t0, size
+	lw	$t1, arrayStart
+	beq     $t1, -1, noArray2
+	
+	addi	$t2, $zero, 1 # i = 1
+	addi	$t3, $zero, 1 # j = 1
+	
+	add	$t7, $zero, $zero # to keep the sum
+	
+	
+	while1:
+	bgt	$t2, $t0, exit1
+	
+	while2:
+	bgt	$t3, $t0, exit2
+	
+	#-------------------------------------------
+	addi	$t5, $t2, -1 # i - 1
+	mul     $t5, $t5, $t0  # (i - 1) x N
+	mul     $t5, $t5, 4 # (i - 1) x N x 4
+	
+	addi	$t6, $t3, -1 # j - 1
+	mul	$t6, $t6, 4 # (j - 1) x 4
+	add	$t5, $t5, $t6 # displacement adress is calculated
+	
+	add	$t4, $t1, $t5
+	lw	$t5, 0($t4) # GET ARR[i][j]
+	
+	#------
+	li $v0, 1
+	lw $a0, 0($t4)
+	syscall
+	
+	la $a0, comma
+	li $v0, 4
+	syscall
+	#------
+	add	$t7, $t7, $t5 # sum = sum + arr[i][j]
+	
+	addi	$t3, $t3, 1 #j++
+	#---------------------------------------------
+	j while2
+	exit2:
+	addi    $t3, $zero, 1 # init j after each outer iteration
+	addi	$t2, $t2, 1 #i++
+	j while1
+	exit1:
+	
+	mul	$t4, $t0, $t0 # N*N
+	div 	$t7, $t7, $t4 # AV = SUM / N*N
+	
+	la $a0, avRowTraversel
+	li $v0, 4
+	syscall
+	
+	# PRINT AVERAGE
+	li $v0, 1
+	move $a0, $t7
+	syscall
+	
+
+	j done4
+noArray2:
+	# print msg
+	la $a0, arrayNotCreated
+	li $v0, 4
+	syscall
+	j done4
+	
+done4:
+j menu
+# Obtain the average of the matrix elements in a row-major fashion---END
+
+
+
+# Obtain the average of matrix elements in a column-major fashion---START
+sel5:
+
+	# first, check if there is an array created!
+	lw	$t0, size
+	lw	$t1, arrayStart
+	beq     $t1, -1, noArray3
+	
+	addi	$t2, $zero, 1 # i = 1
+	addi	$t3, $zero, 1 # j = 1
+	
+	add	$t7, $zero, $zero # to keep the sum
+	
+	
+	while3:
+	bgt	$t2, $t0, exit3
+	
+	while4:
+	bgt	$t3, $t0, exit4
+	
+	#-------------------------------------------
+	addi	$t5, $t2, -1 # i - 1
+	mul     $t5, $t5, 4  # (i - 1) x 4
+	
+	addi	$t6, $t3, -1 # j - 1
+	mul     $t6, $t6, $t0  # (j - 1) x N
+	mul     $t6, $t6, 4 # (j - 1) x N x 4
+	
+	add	$t5, $t5, $t6 # displacement adress is calculated
+	
+	add	$t4, $t1, $t5
+	lw	$t5, 0($t4) # GET ARR[j][i]
+	
+	#------
+	li $v0, 1
+	lw $a0, 0($t4)
+	syscall
+	
+	la $a0, comma
+	li $v0, 4
+	syscall
+	#------
+	add	$t7, $t7, $t5 # sum = sum + arr[i][j]
+	
+	addi	$t3, $t3, 1 #j++
+	#---------------------------------------------
+	j while4
+	exit4:
+	addi    $t3, $zero, 1
+	addi	$t2, $t2, 1 #i++
+	j while3
+	exit3:
+	
+	mul	$t4, $t0, $t0
+	div 	$t7, $t7, $t4
+	
+	la $a0, avColumnTraversel
+	li $v0, 4
+	syscall
+	
+	li $v0, 1
+	move $a0, $t7
+	syscall
+	
+
+	j done5
+noArray3:
+	# print msg
+	la $a0, arrayNotCreated
+	li $v0, 4
+	syscall
+	j done5
+	
+done5:
+
+j menu
+# Obtain the average of matrix elements in a column-major fashion---END
+
+fin:
+	# end program
+	li	$v0, 10
+		syscall	
+.data
+size:           	.word -1 
+arrayStart:     	.word -1
+
+WelcomePrompt:  	.asciiz "\nHello, welcome to square matrix average finder!\nENTER: \n0) to exit \n1) Enter square matrix dimension (N)\n2) Allocate an array with specified size \n3) Display desired elements of the matrix by specifying its row and column member \n4) Obtain the average of the matrix elements in a row by row traversel and display\n5) Obtain the average of the matrix elements in a column by column traversel and display"
+EnterPrompt:    	.asciiz "\nENTER YOUR CHOICE: "
+
+
+sel1Prompt:     	.asciiz "\nEnter the square matrix dimension N: "
+
+sel2Success:    	.asciiz "\n==========================\nMATRIX IS CREATED SUCCESFULLY!\n=========================="
+sel2Problem:    	.asciiz "\n==========================\nCANNOT CREATE THE MATRIX! You need to specify the size first!\n========================== "
+
+displayPropmpt1: 	.asciiz "\nTo display element, specify row and column index accordingly as (i,j)"
+rowPrompt:       	.asciiz "\nPlease enter the row index: "
+columnPrompt:      	.asciiz "\nPlease enter the column index: "
+arrayNotCreated:   	.asciiz "\nYou need to create the matrix first!"
+invalidIndex:      	.asciiz "\nYOU ENTERED AN INVALID ROW OR COLUMN..."
+
+desiredValue:      	.asciiz "\nThe value at desired index is: "
+
+avRowTraversel:    	.asciiz "\nThe average of the values obtained by row traversel is: "
+avColumnTraversel: 	.asciiz "\nThe average of the values obtained by column traversel is: "
+
+comma:		 	.asciiz ", "
+//CODE_END---------------------------------------------------------------------------------------------------------------------------------------------------
